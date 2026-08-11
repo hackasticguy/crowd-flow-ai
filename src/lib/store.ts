@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 interface User {
   id: string;
@@ -13,16 +14,16 @@ interface AppState {
   logout: () => void;
 }
 
-export const useStore = create<AppState>((set) => ({
-  user: null,
-  token: localStorage.getItem("token"),
-  setUser: (user, token) => {
-    if (token) localStorage.setItem("token", token);
-    else localStorage.removeItem("token");
-    set({ user, token });
-  },
-  logout: () => {
-    localStorage.removeItem("token");
-    set({ user: null, token: null });
-  },
-}));
+export const useStore = create<AppState>()(
+  persist(
+    (set) => ({
+      user: null,
+      token: null,
+      setUser: (user, token) => set({ user, token }),
+      logout: () => set({ user: null, token: null }),
+    }),
+    {
+      name: "crowd-flow-storage",
+    }
+  )
+);

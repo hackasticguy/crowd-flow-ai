@@ -234,6 +234,11 @@ async function startServer() {
     res.json({ message: "Simulation resumed" });
   });
 
+  app.post("/api/simulate/emergency", requireAuth, (req, res) => {
+    simEngine.eventSchedule = "Emergency Evacuation";
+    res.json({ message: "Emergency evacuation triggered globally" });
+  });
+
   app.post("/api/simulate/speed", requireAuth, (req, res) => {
     const { speed } = req.body;
     simEngine.setSpeed(speed);

@@ -5,7 +5,25 @@ import { LayoutDashboard, Map, Activity, FileText, Settings, LogOut } from "luci
 import { cn } from "@/src/lib/utils";
 
 export default function Layout() {
-  const { user, logout } = useStore();
+  const { user, logout, token } = useStore();
+  const [emergencyTriggered, setEmergencyTriggered] = React.useState(false);
+
+  const handleEmergencyReroute = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch("/api/simulate/emergency", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setEmergencyTriggered(true);
+        setTimeout(() => setEmergencyTriggered(false), 2000);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -92,11 +110,20 @@ export default function Layout() {
             <p className="text-xs text-muted-foreground">Venue: <span className="text-foreground">Global Selection</span></p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="px-3 py-1.5 text-xs bg-muted border border-border rounded font-medium hover:bg-secondary transition-colors text-foreground">
+            <button 
+              onClick={() => navigate("/reports")}
+              className="px-3 py-1.5 text-xs bg-muted border border-border rounded font-medium hover:bg-secondary transition-colors text-foreground cursor-pointer"
+            >
               Export Reports
             </button>
-            <button className="px-3 py-1.5 text-xs bg-primary text-primary-foreground rounded font-medium shadow-lg hover:bg-primary/90 transition-colors">
-              Emergency Reroute
+            <button 
+              onClick={handleEmergencyReroute}
+              className={cn(
+                "px-3 py-1.5 text-xs cursor-pointer text-primary-foreground rounded font-medium shadow-lg transition-colors",
+                emergencyTriggered ? "bg-red-600 hover:bg-red-700 animate-pulse" : "bg-primary hover:bg-primary/90"
+              )}
+            >
+              {emergencyTriggered ? "Triggered!" : "Emergency Reroute"}
             </button>
           </div>
         </header>

@@ -256,6 +256,7 @@ export default function Simulation() {
       if (data.exitUtilization) setExitUtilization(data.exitUtilization);
       if (data.destinationDistribution) setDestinationDistribution(data.destinationDistribution);
       if (data.scheduleEffects) setScheduleEffects(data.scheduleEffects);
+      if (data.eventSchedule) setEventSchedule(data.eventSchedule);
       
       if (data.activeAgents === 0 && data.isRunning === false && runningRef.current) {
          setRunning(false);
@@ -923,22 +924,25 @@ export default function Simulation() {
                 </div>
               )}
 
-              <div className="relative flex-1 bg-background/50 border-y border-border">
+              <div className="relative flex-1 w-full min-h-[500px] bg-background/50 border-y border-border">
                 {venueObj && (
                   <>
-                  <ReactFlowProvider>
-                    <FlowResizer sidebarCollapsed={sidebarCollapsed} isFullscreen={isFullscreen} />
-                    <ReactFlow
-                      nodes={mappedNodes}
-                      edges={mappedEdges}
-                      nodeTypes={nodeTypes}
-                      fitView
-                      className="bg-transparent"
-                    >
-                      <Background color="hsl(var(--muted-foreground))" gap={16} size={1} />
-                      <AgentOverlay agents={agents} />
-                    </ReactFlow>
-                  </ReactFlowProvider>
+                  <div className="absolute inset-0 z-0">
+                    <ReactFlowProvider>
+                      <FlowResizer sidebarCollapsed={sidebarCollapsed} isFullscreen={isFullscreen} />
+                      <ReactFlow
+                        nodes={mappedNodes}
+                        edges={mappedEdges}
+                        nodeTypes={nodeTypes}
+                        fitView
+                        className="bg-transparent"
+                        style={{ width: '100%', height: '100%' }}
+                      >
+                        <Background color="hsl(var(--muted-foreground))" gap={16} size={1} />
+                        <AgentOverlay agents={agents} />
+                      </ReactFlow>
+                    </ReactFlowProvider>
+                  </div>
                   
                   {/* Agent Legend Overlay */}
                   <div className="absolute bottom-4 left-4 bg-black/85 text-white p-3 rounded-xl border border-border/50 text-[10px] backdrop-blur-md z-50 shadow-2xl flex flex-wrap gap-x-3 gap-y-1.5 max-w-md">
