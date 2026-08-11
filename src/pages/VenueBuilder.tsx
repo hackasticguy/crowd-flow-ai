@@ -45,6 +45,7 @@ export default function VenueBuilder() {
   // Modals state
   const [nodeModal, setNodeModal] = useState<any>(null); // null or { mode: 'add'|'edit', nodeType?: any, node?: any }
   const [edgeModal, setEdgeModal] = useState<any>(null); // null or { mode: 'add'|'edit', edge?: any, connection?: any }
+  const [alertModal, setAlertModal] = useState<{title: string, message: string} | null>(null);
   
   // Validation state
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -98,10 +99,10 @@ export default function VenueBuilder() {
       });
       const saved = await res.json();
       setVenueId(saved.id);
-      alert("Venue layout saved successfully to canonical graph store!");
+      setAlertModal({ title: "Success", message: "Venue layout saved successfully to canonical graph store!" });
     } catch (e) {
       console.error(e);
-      alert("Failed to save venue layout");
+      setAlertModal({ title: "Error", message: "Failed to save venue layout" });
     } finally {
       setSaving(false);
     }
@@ -352,6 +353,19 @@ export default function VenueBuilder() {
                 </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Alert Modal */}
+      {alertModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-card border border-border p-6 rounded-lg shadow-2xl w-[400px]">
+            <h3 className="text-lg font-bold mb-3">{alertModal.title}</h3>
+            <p className="text-sm text-muted-foreground mb-6">{alertModal.message}</p>
+            <div className="flex justify-end">
+              <Button onClick={() => setAlertModal(null)}>OK</Button>
+            </div>
           </div>
         </div>
       )}

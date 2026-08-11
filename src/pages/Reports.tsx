@@ -11,6 +11,7 @@ export default function Reports() {
   const [simulations, setSimulations] = useState<any[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [selectedReport, setSelectedReport] = useState<any>(null);
 
   useEffect(() => {
     fetch("/api/simulations", { headers: { Authorization: `Bearer ${token}` } })
@@ -182,7 +183,7 @@ export default function Reports() {
                     </p>
                   </div>
                   <div className="mt-4 md:mt-0">
-                    <Button variant="secondary" size="sm">
+                    <Button variant="secondary" size="sm" className="cursor-pointer" onClick={() => setSelectedReport(sim)}>
                       <FileText className="w-4 h-4 mr-2" /> View Full Report
                     </Button>
                   </div>
@@ -192,6 +193,47 @@ export default function Reports() {
           )}
         </CardContent>
       </Card>
+
+      {selectedReport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-card border border-border p-6 rounded-lg shadow-2xl w-11/12 max-w-2xl max-h-[85vh] overflow-y-auto">
+            <h3 className="text-xl font-bold mb-4 border-b border-border pb-2">Simulation Report Details</h3>
+            <div className="space-y-6 text-sm">
+              <div className="grid grid-cols-2 gap-4">
+                <div><span className="text-muted-foreground block text-xs">Simulation ID</span> <span className="font-mono">{selectedReport.id}</span></div>
+                <div><span className="text-muted-foreground block text-xs">Date</span> {new Date(selectedReport.timestamp).toLocaleString()}</div>
+                <div><span className="text-muted-foreground block text-xs">Venue ID</span> {selectedReport.venueId}</div>
+                <div><span className="text-muted-foreground block text-xs">Crowd Size</span> {selectedReport.crowdSize}</div>
+                <div><span className="text-muted-foreground block text-xs">Peak Risk</span> <span className="font-bold text-rose-400">{selectedReport.peakRiskScore?.toFixed(1) || selectedReport.riskScore?.toFixed(1)}%</span></div>
+                <div><span className="text-muted-foreground block text-xs">Average Risk</span> {selectedReport.riskScore?.toFixed(1)}%</div>
+                <div><span className="text-muted-foreground block text-xs">AI Model</span> {selectedReport.modelName || 'Mistral-7B'}</div>
+                <div><span className="text-muted-foreground block text-xs">Inference Latency</span> {selectedReport.inferenceLatency || 'N/A'} ms</div>
+              </div>
+              
+              {selectedReport.bottlenecks && selectedReport.bottlenecks.length > 0 && (
+                <div>
+                  <h4 className="font-semibold text-rose-400 border-b border-border/50 pb-1 mb-2">Identified Bottlenecks</h4>
+                  <ul className="list-disc pl-5 text-muted-foreground space-y-1">
+                    {selectedReport.bottlenecks.map((b: string, i: number) => <li key={i}>{b}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              {selectedReport.recommendations && (
+                <div>
+                  <h4 className="font-semibold text-primary border-b border-border/50 pb-1 mb-2">AI Strategy & Recommendations</h4>
+                  <div className="p-4 bg-muted/50 border border-border/50 rounded-md text-muted-foreground whitespace-pre-wrap font-mono text-xs leading-relaxed overflow-x-auto">
+                    {selectedReport.recommendations}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end mt-8">
+              <Button onClick={() => setSelectedReport(null)}>Close</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

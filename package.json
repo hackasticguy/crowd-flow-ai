@@ -58,7 +58,7 @@
     "vite": "^6.2.3"
   },
   "description": "CrowdFlow AI is a high-performance, full-stack intelligence platform for simulating large-scale crowd dynamics, detecting bottlenecks, and generating real-time, AI-driven rerouting strategies. Built for modern event organizers and safety officers.",
-  "main": "generate_builder.js",
+  "main": "dist/server.cjs",
   "keywords": [],
   "author": "",
   "license": "ISC"
