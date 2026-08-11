@@ -222,9 +222,52 @@ export default function Reports() {
               {selectedReport.recommendations && (
                 <div>
                   <h4 className="font-semibold text-primary border-b border-border/50 pb-1 mb-2">AI Strategy & Recommendations</h4>
-                  <div className="p-4 bg-muted/50 border border-border/50 rounded-md text-muted-foreground whitespace-pre-wrap font-mono text-xs leading-relaxed overflow-x-auto">
-                    {selectedReport.recommendations}
-                  </div>
+                  {(() => {
+                    try {
+                      const aiData = JSON.parse(selectedReport.recommendations);
+                      return (
+                        <div className="space-y-3 mt-2">
+                          <div className="flex items-center justify-between bg-muted/30 p-3 rounded-md border border-border/50">
+                            <span className="font-medium text-muted-foreground">Assessed Risk Level</span>
+                            <span className={`px-2 py-1 rounded text-xs font-bold ${
+                              aiData.riskLevel === 'CRITICAL' ? 'bg-destructive/20 text-destructive' :
+                              aiData.riskLevel === 'HIGH' ? 'bg-orange-500/20 text-orange-500' :
+                              'bg-emerald-500/20 text-emerald-500'
+                            }`}>
+                              {aiData.riskLevel || 'UNKNOWN'}
+                            </span>
+                          </div>
+                          
+                          <div className="bg-muted/30 p-3 rounded-md border border-border/50">
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold block mb-1">Recommended Action</span>
+                            <p className="text-sm text-foreground">{aiData.recommendedAction}</p>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-muted/30 p-3 rounded-md border border-border/50">
+                              <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold block mb-1">Target Exit</span>
+                              <p className="text-sm text-foreground">{aiData.recommendedExit || 'N/A'}</p>
+                            </div>
+                            <div className="bg-muted/30 p-3 rounded-md border border-border/50">
+                              <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold block mb-1">Reroute Target</span>
+                              <p className="text-sm text-foreground">{aiData.reroutePercentage ? `${aiData.reroutePercentage}% of crowd` : 'N/A'}</p>
+                            </div>
+                          </div>
+
+                          <div className="bg-muted/30 p-3 rounded-md border border-border/50">
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold block mb-1">AI Reasoning</span>
+                            <p className="text-sm text-muted-foreground italic border-l-2 border-primary/50 pl-2">{aiData.reason}</p>
+                          </div>
+                        </div>
+                      );
+                    } catch (e) {
+                      return (
+                        <div className="p-4 bg-muted/50 border border-border/50 rounded-md text-muted-foreground whitespace-pre-wrap font-mono text-xs leading-relaxed overflow-x-auto">
+                          {selectedReport.recommendations}
+                        </div>
+                      );
+                    }
+                  })()}
                 </div>
               )}
             </div>
