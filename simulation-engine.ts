@@ -60,6 +60,10 @@ export class SimulationEngine {
   private isRunning: boolean = false;
   private tickRateMs = 100;
   private intervalId: NodeJS.Timeout | null = null;
+  private snapshotIntervalId: NodeJS.Timeout | null = null;
+  
+  public simulationId: string | null = null;
+  public supabase: any = null;
 
   public simulationSpeed: number = 1;
   public venueId: string = "";
@@ -101,8 +105,10 @@ export class SimulationEngine {
     this.hf = hf;
   }
 
-  public loadVenue(venue: any, crowdSize: number = 200, eventSchedule: string = "Normal") {
+  public loadVenue(venue: any, crowdSize: number = 200, eventSchedule: string = "Normal", simulationId?: string, supabase?: any) {
     this.eventSchedule = eventSchedule;
+    this.simulationId = simulationId || null;
+    this.supabase = supabase || null;
     this.nodes = venue.nodes || [];
     this.edges = venue.edges || [];
     this.venueId = venue.id;
@@ -630,20 +636,60 @@ export class SimulationEngine {
 
   public start() {
     if (this.isRunning) return;
-    this.isRunning = true;
-    this.intervalId = setInterval(() => this.tick(), this.tickRateMs);
+    if (!this.intervalId) {
+      this.intervalId = setInterval(() => this.tick(), this.tickRateMs);
+    }
+    if (!this.snapshotIntervalId && this.simulationId && this.supabase) {
+      this.snapshotIntervalId = setInterval(() => this.persistSnapshot(), 3000); // 3 seconds
+    }
   }
 
   public pause() {
     this.isRunning = false;
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
+    if (this.intervalId) clearInterval(this.intervalId);
+    if (this.snapshotIntervalId) clearInterval(this.snapshotIntervalId);
+    this.intervalId = null;
+    this.snapshotIntervalId = null;
+    
+    // Update DB status if using Supabase
+    if (this.simulationId && this.supabase) {
+       this.supabase.from('simulations').update({ status: 'paused', paused_at: new Date().toISOString() }).eq('id', this.simulationId).then();
     }
   }
 
   public stop() {
-    this.pause();
+    this.isRunning = false;
+    if (this.intervalId) clearInterval(this.intervalId);
+    if (this.snapshotIntervalId) clearInterval(this.snapshotIntervalId);
+    this.intervalId = null;
+    this.snapshotIntervalId = null;
+    
+    if (this.simulationId && this.supabase) {
+       this.supabase.from('simulations').update({ status: 'stopped', completed_at: new Date().toISOString() }).eq('id', this.simulationId).then();
+    }
+  }
+
+  private async persistSnapshot() {
+    if (!this.simulationId || !this.supabase || !this.isRunning) return;
+    try {
+      await this.supabase.from('simulation_snapshots').insert([{
+        simulation_id: this.simulationId,
+        risk_score: this.currentRiskScore,
+        risk_level: this.currentRiskBreakdown?.riskLevel || 'LOW',
+        crowd_density: this.currentRiskBreakdown?.crowdDensity || 0,
+        queue_ratio: this.currentRiskBreakdown?.queueRatio || 0,
+        exit_utilization: this.currentRiskBreakdown?.exitUtilization || 0,
+        blocked_path_ratio: this.currentRiskBreakdown?.blockedPathRatio || 0,
+        active_agents: this.agents.length - this.exitedAgentsCount,
+        exited_agents: this.exitedAgentsCount,
+        rerouted_agents: this.totalReroutedAgentsCount,
+        node_occupancy: Object.fromEntries(this.nodeOccupancy),
+        edge_occupancy: Object.fromEntries(this.edgeOccupancy),
+        bottlenecks: this.bottlenecks
+      }]);
+    } catch (e) {
+      console.error("Failed to persist snapshot", e);
+    }
   }
 
   public getScheduleEffects() {

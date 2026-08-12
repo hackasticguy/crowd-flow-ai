@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/src
 import { Button } from "@/src/components/ui/button";
 import { FileText, Download } from "lucide-react";
 import { useStore } from "@/src/lib/store";
+import { supabase } from "@/src/lib/supabase";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -14,7 +15,7 @@ export default function Reports() {
   const [selectedReport, setSelectedReport] = useState<any>(null);
 
   useEffect(() => {
-    fetch("/api/simulations", { headers: { Authorization: `Bearer ${token}` } })
+    fetch("/api/simulate", { headers: { Authorization: `Bearer ${token}` } })
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -60,7 +61,25 @@ export default function Reports() {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      setSuccessMsg("CSV exported successfully");
+      
+      // Upload to Supabase Storage
+      const fileName = `report_${Date.now()}.csv`;
+      supabase.storage.from('reports').upload(fileName, blob).then(async ({ data, error }) => {
+        if (!error && data) {
+           const { data: urlData } = supabase.storage.from('reports').getPublicUrl(fileName);
+           await supabase.from('reports').insert([{
+             organization_id: useStore.getState().activeOrganization?.id,
+             created_by: useStore.getState().user?.id,
+             name: 'CSV Export',
+             report_type: 'csv',
+             file_path: data.path,
+             file_url: urlData.publicUrl,
+             status: 'completed'
+           }]);
+        }
+      });
+
+      setSuccessMsg("CSV exported and saved successfully");
       setTimeout(() => setSuccessMsg(""), 3000);
     } catch (e: any) {
       setErrorMsg(`CSV Export Failed: ${e.message}`);
@@ -122,7 +141,26 @@ export default function Reports() {
       doc.text("The simulation data shows the impact of crowd size on venue safety. Detailed AI reasoning is available in the individual CSV export.", 14, yOffset + 20);
 
       doc.save('crowdflow_reports.pdf');
-      setSuccessMsg('PDF exported successfully');
+      
+      // Upload to Supabase Storage
+      const pdfBlob = doc.output('blob');
+      const fileName = `report_${Date.now()}.pdf`;
+      supabase.storage.from('reports').upload(fileName, pdfBlob).then(async ({ data, error }) => {
+        if (!error && data) {
+           const { data: urlData } = supabase.storage.from('reports').getPublicUrl(fileName);
+           await supabase.from('reports').insert([{
+             organization_id: useStore.getState().activeOrganization?.id,
+             created_by: useStore.getState().user?.id,
+             name: 'PDF Export',
+             report_type: 'pdf',
+             file_path: data.path,
+             file_url: urlData.publicUrl,
+             status: 'completed'
+           }]);
+        }
+      });
+
+      setSuccessMsg('PDF exported and saved successfully');
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (e: any) {
        setErrorMsg(`PDF Export Failed: ${e.message}`);

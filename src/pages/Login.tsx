@@ -4,6 +4,7 @@ import { useStore } from "@/src/lib/store";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Input } from "@/src/components/ui/input";
 import { Button } from "@/src/components/ui/button";
+import { supabase } from "@/src/lib/supabase";
 
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
@@ -20,22 +21,26 @@ export default function Login() {
     setError("");
     setLoading(true);
 
-    const endpoint = isLogin ? "/api/auth/login" : "/api/auth/register";
-    const body = isLogin ? { email, password } : { email, password, name };
-
     try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Authentication failed");
+      if (isLogin) {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: name,
+            }
+          }
+        });
+        if (error) throw error;
       }
-
-      setUser(data.user, data.token);
+      
       navigate("/");
     } catch (err: any) {
       setError(err.message);

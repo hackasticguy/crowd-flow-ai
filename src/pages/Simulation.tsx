@@ -4,6 +4,7 @@ import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
 import { Play, ShieldAlert, Cpu, Square, DoorOpen, Flag, Utensils, Cross, Siren, MapPin, Activity, CheckCircle, XCircle, ChevronLeft, ChevronRight, Maximize2, Minimize2 } from "lucide-react";
 import { useStore as useAppStore } from "@/src/lib/store";
+import { supabase } from "@/src/lib/supabase";
 import { validateVenueGraph } from "@/src/lib/canonicalVenue";
 import { io, Socket } from "socket.io-client";
 import ReactFlow, { Background, Controls, useReactFlow, ReactFlowProvider, Handle, Position, MarkerType } from "reactflow";
@@ -265,8 +266,32 @@ export default function Simulation() {
       }
     });
 
+    // Supabase Realtime for AI Alerts and Status Changes
+    const channel = supabase.channel('simulations_channel')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ai_recommendations' }, payload => {
+        if (payload.new && payload.new.venue_id === venueRef.current) {
+          const rec = payload.new;
+          setResult({ recommendations: JSON.stringify(rec.recommendation) });
+          // Could also show a toast notification here
+        }
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'simulations' }, payload => {
+        if (payload.new && payload.new.venue_id === venueRef.current) {
+          if (payload.new.status === 'stopped') {
+             setRunning(false);
+             setPaused(false);
+          } else if (payload.new.status === 'paused') {
+             setPaused(true);
+          } else if (payload.new.status === 'running') {
+             setPaused(false);
+          }
+        }
+      })
+      .subscribe();
+
     return () => {
       socketRef.current?.disconnect();
+      supabase.removeChannel(channel);
     };
   }, [token]);
 
@@ -860,7 +885,7 @@ export default function Simulation() {
                   <span className={`px-2 py-1 rounded text-xs font-bold ${
                     result.riskScore > 75 ? 'bg-destructive/20 text-destructive' : 'bg-primary/20 text-primary'
                   }`}>
-                    Final Risk: {result.riskScore.toFixed(1)}%
+                    Final Risk: {(result.riskScore || 0).toFixed(1)}%
                   </span>
                 )}
                 <Button

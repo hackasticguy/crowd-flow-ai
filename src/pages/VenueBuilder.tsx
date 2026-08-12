@@ -34,7 +34,7 @@ const NODE_TYPES = [
 ];
 
 export default function VenueBuilder() {
-  const { token } = useStore();
+  const { token, activeOrganization } = useStore();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   
@@ -95,14 +95,18 @@ export default function VenueBuilder() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ id: saveId, name: venueName, nodes, edges })
+        body: JSON.stringify({ id: saveId, name: venueName, nodes, edges, organization_id: activeOrganization?.id })
       });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error?.message || "Server returned an error");
+      }
       const saved = await res.json();
       setVenueId(saved.id);
-      setAlertModal({ title: "Success", message: "Venue layout saved successfully to canonical graph store!" });
-    } catch (e) {
+      setAlertModal({ title: "Success", message: "Venue layout saved successfully to database!" });
+    } catch (e: any) {
       console.error(e);
-      setAlertModal({ title: "Error", message: "Failed to save venue layout" });
+      setAlertModal({ title: "Error", message: `Failed to save venue layout: ${e.message}` });
     } finally {
       setSaving(false);
     }
@@ -129,17 +133,21 @@ export default function VenueBuilder() {
           <p className="text-muted-foreground">Design spatial layouts, validate paths, and set capacities.</p>
         </div>
         <div className="flex items-center space-x-3">
-          <Button variant="outline" onClick={loadDemoVenue}>Load Demo Venue</Button>
           <Button variant="outline" onClick={() => { setNodes([]); setEdges([]); setVenueId(""); setVenueName("New Venue"); }}>New Venue</Button>
           <input 
              value={venueName} 
              onChange={(e) => setVenueName(e.target.value)} 
              className="bg-background/50 border border-border/50 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-primary"
           />
-          <Button onClick={handleSave} disabled={saving} className="shadow-lg shadow-primary/20 bg-primary text-primary-foreground">
-            <Save className="w-4 h-4 mr-2" />
-            {saving ? "Saving..." : "Save Layout"}
-          </Button>
+          <div className="flex space-x-2">
+            <Button variant="outline" onClick={loadDemoVenue}>
+              Reset to Demo
+            </Button>
+            <Button onClick={handleSave} disabled={saving} className="bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300">
+              <Save className="w-4 h-4 mr-2" />
+              {saving ? "Saving..." : "Save Layout"}
+            </Button>
+          </div>
         </div>
       </div>
 
