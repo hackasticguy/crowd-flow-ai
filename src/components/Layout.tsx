@@ -70,7 +70,7 @@ export default function Layout() {
         <div className="mt-auto p-4">
           <div className="bg-muted rounded-lg p-3 border border-border mb-4">
             <p className="text-[10px] uppercase tracking-widest text-primary font-bold mb-1">AI Model Active</p>
-            <p className="text-xs text-muted-foreground">Mistral-7B-v0.2</p>
+            <p className="text-xs text-muted-foreground">Qwen2.5-7B-Instruct</p>
             <div className="mt-2 w-full bg-secondary h-1 rounded-full overflow-hidden">
               <div className="bg-primary h-full w-3/4"></div>
             </div>

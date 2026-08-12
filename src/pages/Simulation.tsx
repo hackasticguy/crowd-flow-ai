@@ -179,8 +179,13 @@ export default function Simulation() {
   
   let aiJson: any = null;
   try {
-    if (result && result.recommendations) {
-       aiJson = JSON.parse(result.recommendations);
+    if (result) {
+      if (result.recommendations) {
+        aiJson = typeof result.recommendations === 'string' ? JSON.parse(result.recommendations) : result.recommendations;
+      } else if (result.riskLevel) {
+        // The backend now returns the JSON directly
+        aiJson = result;
+      }
     }
   } catch(e) {}
   const [hfTestStatus, setHfTestStatus] = useState<any>(null);
@@ -1006,7 +1011,7 @@ export default function Simulation() {
           </SimulationDataContext.Provider>
 
             {result && (
-              <div className="p-4 bg-muted/30 border-t border-border max-h-64 overflow-y-auto animate-in slide-in-from-bottom-4">
+              <div className="p-4 bg-muted/30 border-t border-border max-h-[500px] overflow-y-auto animate-in slide-in-from-bottom-4">
                 <div className="flex justify-between items-center mb-2">
                   <h4 className="text-sm font-semibold flex items-center uppercase tracking-wider">
                     <Cpu className="w-4 h-4 mr-2" /> 
@@ -1084,147 +1089,60 @@ export default function Simulation() {
                         </div>
                       )}
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <p className="text-foreground font-bold mb-1 border-b border-border pb-1">🤖 Model Details</p>
-                        <p><strong>Name:</strong> {result.modelName === "Qwen/Qwen2.5-7B-Instruct" ? "Qwen 2.5 7B" : result.modelName === "microsoft/Phi-3-mini-4k-instruct" ? "Phi-3 Mini" : result.modelName}</p>
+                        <p><strong>Name:</strong> Qwen 2.5 7B Instruct</p>
                         <p><strong>ID:</strong> {result.modelName || "Qwen/Qwen2.5-7B-Instruct"}</p>
-                        <p><strong>Repository:</strong> <a href={`https://huggingface.co/${result.modelName || "Qwen/Qwen2.5-7B-Instruct"}`} target="_blank" rel="noreferrer" className="text-primary hover:underline">hf.co/{result.modelName || "Qwen/Qwen2.5-7B-Instruct"}</a></p>
-                        <p><strong>Integration:</strong> @huggingface/inference (Server-Side)</p>
-                        <p><strong>API Type:</strong> Inference API</p>
+                        <p><strong>Integration:</strong> @huggingface/inference API</p>
                       </div>
                       <div>
-                        <p className="text-foreground font-bold mb-1 border-b border-border pb-1">📚 Dataset Details</p>
-                        <p><strong>Name:</strong> CrowdHuman</p>
-                        <p><strong>URL:</strong> <a href="https://huggingface.co/datasets/jamarks/CrowdHuman-train" target="_blank" rel="noreferrer" className="text-primary hover:underline">hf.co/datasets/jamarks/CrowdHuman-train</a></p>
-                        <p><strong>Status:</strong> {result.hfDatasetInfo === "UNAVAILABLE" ? <span className="text-destructive font-bold">UNAVAILABLE</span> : <span className="text-green-500 font-bold">ONLINE</span>}</p>
-                        {result.hfDatasetInfo === "UNAVAILABLE" ? (
-                           <div className="mt-2 p-2 bg-destructive/10 border border-destructive/20 rounded">
-                              <p className="text-destructive font-bold uppercase text-xs">Dataset request failed.</p>
-                              <p className="text-xs mt-1">Using LOCAL DEFAULT CALIBRATION.</p>
-                              <p className="text-xs">Mock data: NO</p>
-                           </div>
-                        ) : (
-                           <>
-                             <p><strong>Dataset Request:</strong> <span className="text-green-400 font-bold">SUCCESS</span></p>
-                             <p><strong>Timestamp:</strong> {new Date().toISOString()}</p>
-                             <p><strong>Total Records:</strong> 15000 (CrowdHuman)</p>
-                             <p><strong>Samples Requested:</strong> {result.datasetMetrics?.samplesRequested || 5}</p>
-                             <p><strong>Samples Loaded:</strong> {result.datasetMetrics?.samplesLoaded || 0}</p>
-                             <p><strong>People Detected:</strong> {result.datasetMetrics?.peopleDetected || 0}</p>
-                             <p><strong>BBoxes Processed:</strong> {result.datasetMetrics?.boundingBoxesProcessed || 0}</p>
-                             <p><strong>Calibration Multiplier:</strong> {result.datasetMetrics?.calibrationMultiplier?.toFixed(2) || "1.00"}x</p>
-                             <p><strong>Mock data:</strong> NO</p>
-                           </>
-                        )}
+                        <p className="text-foreground font-bold mb-1 border-b border-border pb-1">⚡ Inference Verification</p>
+                        <p className="flex justify-between max-w-sm">
+                          <span>Connection:</span> 
+                          <span className={result.hfStatus?.connected ? "text-green-400" : "text-red-400"}>{result.hfStatus?.connected ? "ONLINE" : "OFFLINE"}</span>
+                        </p>
+                        <p className="flex justify-between max-w-sm">
+                          <span>HTTP Status:</span> 
+                          <span className={result.hfStatus?.connected ? "text-green-400" : "text-muted-foreground"}>{result.hfStatus?.statusCode || 'N/A'}</span>
+                        </p>
+                        <p className="flex justify-between max-w-sm">
+                          <span>Latency:</span> 
+                          <span className="text-primary">{result.inferenceLatency || 0} ms</span>
+                        </p>
                       </div>
                     </div>
 
-                    <div>
-                      <p className="text-foreground font-bold mb-1 border-b border-border pb-1">⚡ Inference Verification</p>
-                      <p className="flex justify-between max-w-sm">
-                        <span>Model Loaded:</span> 
-                        <span className={result.hfStatus?.connected ? "text-green-400" : "text-red-400"}>{result.hfStatus?.connected ? "Yes" : "No"}</span>
-                      </p>
-                      <p className="flex justify-between max-w-sm">
-                        <span>Dataset Loaded:</span> 
-                        <span className={(result.datasetMetrics?.samplesLoaded > 0 && result.hfDatasetInfo !== "UNAVAILABLE") ? "text-green-400" : "text-red-400"}>
-                           {(result.datasetMetrics?.samplesLoaded > 0 && result.hfDatasetInfo !== "UNAVAILABLE") ? "YES" : "NO"}
-                        </span>
-                      </p>
-                      {result.datasetMetrics?.error && (
-                        <p className="text-red-400 text-xs italic mt-1">Error: {result.datasetMetrics.error}</p>
-                      )}
-                      <p className="flex justify-between max-w-sm">
-                        <span>Inference Success:</span> 
-                        <span className={result.hfStatus?.connected ? "text-green-400" : "text-red-400"}>{result.hfStatus?.connected ? "Yes" : "No"}</span>
-                      </p>
-                      <p className="flex justify-between max-w-sm">
-                        <span>Inference Time:</span> 
-                        <span className="text-primary">{result.inferenceLatency || 0} ms</span>
-                      </p>
-                      
-                      <p className="flex justify-between max-w-sm">
-                        <span>API Status:</span> 
-                        {result.hfStatus?.statusCode === 429 ? (
-                          <span className="text-yellow-500">🟡 Rate Limited (HTTP 429)</span>
-                        ) : result.hfStatus?.connected ? (
-                          <span className="text-green-400">HTTP {result.hfStatus.statusCode || 200}</span>
-                        ) : (
-                          <span className="text-red-400">Failed: {result.hfStatus?.error || 'Unknown'}</span>
-                        )}
-                      </p>
-                      <p className="flex justify-between max-w-sm">
-                        <span>Remaining Retry Attempts:</span> 
-                        <span className="text-muted-foreground">{Math.max(0, 3 - (result.hfStatus?.retries || 0))}</span>
-                      </p>
-                      {result.hfStatus?.cached && (
-                        <p className="flex justify-between max-w-sm">
-                          <span>Cache Status:</span> 
-                          <span className="text-blue-400">Restored from Cache</span>
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <p className="text-foreground font-bold mb-1 border-b border-border pb-1 mt-4">📊 Dataset Impact on Simulation</p>
-                      <p className="flex justify-between max-w-sm">
-                        <span>Samples Loaded:</span> 
-                        <span className="text-primary">{result.datasetMetrics?.datasetSamplesLoaded || 1}</span>
-                      </p>
-                      <p className="flex justify-between max-w-sm">
-                        <span>Bounding Boxes Processed:</span> 
-                        <span className="text-primary">{result.datasetMetrics?.boundingBoxesProcessed || 2}</span>
-                      </p>
-                      <p className="flex justify-between max-w-sm">
-                        <span>People Detected:</span> 
-                        <span className="text-primary">{result.datasetMetrics?.peopleDetected || 2}</span>
-                      </p>
-                      <p className="flex justify-between max-w-sm">
-                        <span>Avg People / Image:</span> 
-                        <span className="text-primary">{result.datasetMetrics?.averagePeoplePerImage?.toFixed(2) || '2.00'}</span>
-                      </p>
-                      <p className="flex justify-between max-w-sm">
-                        <span>Calibration Multiplier:</span> 
-                        <span className="text-green-400">{result.datasetMetrics?.calibrationMultiplier?.toFixed(2) || '1.00'}x</span>
-                      </p>
-                      <p className="flex justify-between max-w-sm">
-                        <span>Threshold Before Calib.:</span> 
-                        <span className="text-muted-foreground">{result.datasetMetrics?.thresholdBeforeCalibration || 15} agents/node</span>
-                      </p>
-                      <p className="flex justify-between max-w-sm">
-                        <span>Threshold After Calib.:</span> 
-                        <span className="text-primary">{result.datasetMetrics?.thresholdAfterCalibration || 15} agents/node</span>
-                      </p>
-                      <p className="text-[10px] text-muted-foreground italic mt-1 border-l-2 border-primary/50 pl-2">
-                        Dataset calibration increases sensitivity to crowd density. The effective congestion threshold is reduced from {result.datasetMetrics?.thresholdBeforeCalibration || 15} to {result.datasetMetrics?.thresholdAfterCalibration || 15} agents/node.
-                      </p>
-                    </div>
                     <div className="mt-4">
-                      <p className="text-foreground font-bold mb-1 border-b border-border pb-1">📜 Simulation & Inference Log</p>
-                      <div className="bg-black p-2 rounded border border-border/50 text-[10px] overflow-x-auto whitespace-pre-wrap">
-                        <span className="text-muted-foreground">// 1. Exact JSON Sent to Hugging Face</span><br/>
-                        {result.promptSent?.split('Input JSON:\n')[1] || `{\n  "crowdDensity": ${result.averageDensity || result.crowdSize},\n  "blockedNodes": [${result.bottlenecks?.map((b:any)=>`"${b.split('(')[0].replace('Congestion at ', '').trim()}"`).join(', ')}],\n  "availableExits": [],\n  "riskScore": ${result.riskScore?.toFixed(1)}\n}`}<br/><br/>
-                        <span className="text-muted-foreground">// 2. Raw Model Response</span><br/>
-                        {result.hfStatus?.rawResponse || result.recommendations}<br/><br/>
-                        {result.hfDatasetInfo !== "UNAVAILABLE" ? (
+                      <p className="text-foreground font-bold mb-2 border-b border-border pb-1">📜 AI Recommendation Summary</p>
+                      <div className="bg-black/40 p-4 rounded-lg border border-border/50 space-y-3">
+                        {aiJson ? (
                           <>
-                            <span className="text-muted-foreground">// 3. REAL CrowdHuman Dataset Downloaded Samples</span><br/>
-                            {JSON.stringify(result.datasetSamples, null, 2)}<br/><br/>
-                            <span className="text-muted-foreground">// 4. Dataset Evaluation & Preprocessing Impact</span><br/>
-                            {`✓ Preprocessed actual bounding boxes to calculate real-world density.`}<br/>
-                            {`✓ Applied Calculated Dataset Calibration Multiplier: ${result.calibrationMultiplier?.toFixed(2)}x`}<br/>
-                            {`✓ Affected simulation routing thresholds inside simulation-engine.ts`}
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground font-medium">Risk Level</span>
+                              <span className={`px-2 py-1 rounded text-xs font-bold ${aiJson.riskLevel === 'LOW' ? 'bg-green-500/20 text-green-400' : aiJson.riskLevel === 'MEDIUM' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>
+                                {aiJson.riskLevel || "UNKNOWN"}
+                              </span>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-muted-foreground font-medium">Recommended Action</span>
+                              <span className="text-foreground">{aiJson.recommendedAction || "None"}</span>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-muted-foreground font-medium">Reasoning</span>
+                              <span className="text-foreground italic">"{aiJson.reason || "No reasoning provided"}"</span>
+                            </div>
+                            {(aiJson.affectedNodes?.length > 0 || (aiJson.recommendedExit && aiJson.recommendedExit !== "N/A" && aiJson.recommendedExit !== "All exits are available")) && (
+                              <div className="flex flex-col gap-1 mt-2 pt-2 border-t border-border/50">
+                                <span className="text-muted-foreground font-medium">Targeted Adjustments</span>
+                                {(aiJson.recommendedExit && aiJson.recommendedExit !== "N/A" && aiJson.recommendedExit !== "All exits are available") && <span className="text-xs text-primary">→ Route to: {aiJson.recommendedExit} {aiJson.reroutePercentage ? `(${aiJson.reroutePercentage}%)` : ''}</span>}
+                                {aiJson.affectedNodes?.length > 0 && <span className="text-xs text-orange-400">⚠ Affected: {aiJson.affectedNodes.join(", ")}</span>}
+                              </div>
+                            )}
                           </>
                         ) : (
-                          <>
-                            <span className="text-muted-foreground">// 3. Dataset Request Status</span><br/>
-                            {`Dataset request failed. Using LOCAL DEFAULT CALIBRATION.`}<br/><br/>
-                            <span className="text-muted-foreground">// 4. Dataset Evaluation & Preprocessing Impact</span><br/>
-                            {`✗ No CrowdHuman records loaded.`}<br/>
-                            {`✓ Applied Local Default Calibration Multiplier: ${result.calibrationMultiplier?.toFixed(2)}x`}<br/>
-                            {`Mock Data: NO`}
-                          </>
+                          <div className="text-muted-foreground text-center py-2">No active recommendation data</div>
                         )}
                       </div>
                     </div>

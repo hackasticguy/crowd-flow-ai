@@ -1,8 +1,8 @@
 import "dotenv/config";
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import { HfInference } from "@huggingface/inference";
+import { createServer as createViteServer } from "vite";
 import http from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { SimulationEngine } from "./simulation-engine";
@@ -161,6 +161,33 @@ async function startServer() {
     }
 
     res.json(status);
+  });
+
+  app.get("/api/test-hf-connection", async (req, res) => {
+    if (!process.env.HF_TOKEN) {
+      return res.json({ success: false, error: "HF_TOKEN missing in .env" });
+    }
+    const startTime = Date.now();
+    try {
+      const hf = new HfInference(process.env.HF_TOKEN);
+      const response = await hf.chatCompletion({
+        model: "Qwen/Qwen2.5-7B-Instruct",
+        messages: [{ role: "user", content: "Test connection" }],
+        max_tokens: 10
+      });
+      
+      const latency = Date.now() - startTime;
+      
+      return res.json({
+        success: true,
+        status: 200,
+        latency,
+        model: "Qwen/Qwen2.5-7B-Instruct",
+        response: response.choices[0]?.message?.content || "Success"
+      });
+    } catch (e: any) {
+      return res.json({ success: false, error: e.message, latency: Date.now() - startTime });
+    }
   });
 
   // Serve static files in production

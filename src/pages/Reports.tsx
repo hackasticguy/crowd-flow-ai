@@ -31,62 +31,6 @@ export default function Reports() {
       });
   }, [token]);
 
-  const downloadCSV = () => {
-    try {
-      if (simulations.length === 0) throw new Error("No data to export");
-      const headers = "Simulation ID,Venue,Date,Crowd Size,Event Schedule,Current Risk,Peak Risk,Crowd Density,Queue Ratio,Exit Util,Blocked Path,Average Density,Peak Density,Bottlenecks,AI Recommendation,Latency,Model,Dataset Samples,People Detected,Calibration\n";
-      const csv = simulations.map(sim => {
-        const btl = sim.bottlenecks ? sim.bottlenecks.join("; ") : "";
-        const recs = sim.recommendations ? sim.recommendations.replace(/"/g, '""').replace(/\n/g, " ") : "";
-        const avgDensity = sim.averageDensity?.toFixed(2) || 0;
-        const peakDensity = sim.peakDensity || 0;
-        const peakRisk = sim.peakRiskScore?.toFixed(1) || sim.riskScore?.toFixed(1) || 0;
-        const cd = sim.riskBreakdown?.crowdDensity?.toFixed(2) || 0;
-        const qr = sim.riskBreakdown?.queueRatio?.toFixed(2) || 0;
-        const eu = sim.riskBreakdown?.exitUtilization?.toFixed(2) || 0;
-        const bp = sim.riskBreakdown?.blockedPathRatio?.toFixed(2) || 0;
-        const modelName = sim.modelName || "Microsoft Phi-3-mini-4k-instruct";
-        const ds = sim.datasetMetrics?.samplesLoaded || 0;
-        const pd = sim.datasetMetrics?.peopleDetected || 0;
-        const cal = sim.datasetMetrics?.calibrationMultiplier?.toFixed(2) || 1.0;
-        return `"${sim.id}","${sim.venueId}","${sim.timestamp}","${sim.crowdSize}","${sim.eventSchedule || 'Normal'}","${sim.riskScore}","${peakRisk}","${cd}","${qr}","${eu}","${bp}","${avgDensity}","${peakDensity}","${btl}","${recs}","${sim.inferenceLatency}","${modelName}","${ds}","${pd}","${cal}"`;
-      }).join("\n");
-      
-      const blob = new Blob([headers + csv], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.setAttribute('hidden', '');
-      a.setAttribute('href', url);
-      a.setAttribute('download', 'crowdflow_reports.csv');
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      
-      // Upload to Supabase Storage
-      const fileName = `report_${Date.now()}.csv`;
-      supabase.storage.from('reports').upload(fileName, blob).then(async ({ data, error }) => {
-        if (!error && data) {
-           const { data: urlData } = supabase.storage.from('reports').getPublicUrl(fileName);
-           await supabase.from('reports').insert([{
-             organization_id: useStore.getState().activeOrganization?.id,
-             created_by: useStore.getState().user?.id,
-             name: 'CSV Export',
-             report_type: 'csv',
-             file_path: data.path,
-             file_url: urlData.publicUrl,
-             status: 'completed'
-           }]);
-        }
-      });
-
-      setSuccessMsg("CSV exported and saved successfully");
-      setTimeout(() => setSuccessMsg(""), 3000);
-    } catch (e: any) {
-      setErrorMsg(`CSV Export Failed: ${e.message}`);
-      console.error(e);
-    }
-  };
-
   const downloadPDF = () => {
     try {
       if (simulations.length === 0) throw new Error("No data to export");
@@ -101,7 +45,7 @@ export default function Reports() {
       
       const tableData = simulations.map(sim => [
         sim.id.substring(0, 8),
-        sim.venueId.substring(0, 8) + '...',
+        sim.venueName ? sim.venueName : sim.venueId.substring(0, 8) + '...',
         sim.crowdSize,
         sim.eventSchedule || 'Normal',
         `${sim.riskScore?.toFixed(1) || 0}%`,
@@ -129,7 +73,7 @@ export default function Reports() {
       
       let yOffset = finalY + 25;
       simulations.slice(0, 3).forEach(sim => {
-         let recText = sim.recommendations ? sim.recommendations.substring(0, 150) : "None";
+         let recText = (sim.aiRecommendations && sim.aiRecommendations !== "No recommendations") ? sim.aiRecommendations.substring(0, 150) : "None";
          if (recText.includes("LOCAL SAFETY FALLBACK")) recText = "LOCAL SAFETY FALLBACK";
          doc.text(`${sim.id.substring(0,8)}: ${recText}...`, 14, yOffset);
          yOffset += 10;
@@ -138,7 +82,7 @@ export default function Reports() {
       doc.setFontSize(12);
       doc.text("Conclusion", 14, yOffset + 10);
       doc.setFontSize(10);
-      doc.text("The simulation data shows the impact of crowd size on venue safety. Detailed AI reasoning is available in the individual CSV export.", 14, yOffset + 20);
+      doc.text("The simulation data shows the impact of crowd size on venue safety. AI recommendations are based on real-time congestion analysis during peak loads.", 14, yOffset + 20, { maxWidth: 180 });
 
       doc.save('crowdflow_reports.pdf');
       
@@ -173,12 +117,9 @@ export default function Reports() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Reports & Export</h2>
-          <p className="text-muted-foreground">Historical data and PDF/CSV generation.</p>
+          <p className="text-muted-foreground">Historical data and PDF generation.</p>
         </div>
         <div className="flex space-x-3">
-          <Button variant="outline" className="bg-card border-border" onClick={downloadCSV}>
-            <Download className="w-4 h-4 mr-2" /> Export CSV
-          </Button>
           <Button variant="default" onClick={downloadPDF}>
             <FileText className="w-4 h-4 mr-2" /> Export PDF
           </Button>
