@@ -1,114 +1,71 @@
-# CrowdFlow AI - Venue Crowd Simulation & Optimization
+# Crowd Flow AI
 
-## 🚀 Overview
-CrowdFlow AI is a high-performance, full-stack intelligence platform for simulating large-scale crowd dynamics, detecting bottlenecks, and generating real-time, AI-driven rerouting strategies. Built for modern event organizers and safety officers.
+Crowd Flow AI is a high-performance intelligence platform built to simulate large-scale crowd dynamics, detect traffic bottlenecks in real-time, and generate actionable, AI-driven rerouting strategies to ensure venue safety. 
 
-## 📁 Architecture & Tech Stack
+This project was engineered for modern event organizers, safety officers, and venue operators who need proactive security insights rather than reactive damage control.
 
-- **Frontend**: React 18, Vite, Tailwind CSS, Shadcn UI, Recharts, React Flow (for layout building)
-- **Backend**: Node.js, Express, Custom Simulation Engine
-- **AI Core**: Hugging Face Inference API (`mistralai/Mistral-7B-Instruct-v0.2`)
-- **State Management**: Zustand
-- **Authentication**: JWT, bcryptjs
+---
 
-### Folder Structure
-```text
-/
-├── server.ts               # Express Backend Entry & API Definitions
-├── package.json            # Scripts & Dependencies
-├── vite.config.ts          # Frontend Build Configuration
-├── src/
-│   ├── components/         # Reusable UI Components
-│   │   ├── ui/             # Base level components (buttons, cards, inputs)
-│   │   └── Layout.tsx      # Dashboard Shell layout
-│   ├── pages/              # Application Views
-│   │   ├── Login.tsx       # Auth
-│   │   ├── Dashboard.tsx   # Global analytics and density monitoring
-│   │   ├── VenueBuilder.tsx# Interactive Graph node editor 
-│   │   ├── Simulation.tsx  # Core engine trigger and AI recommendations
-│   │   └── Reports.tsx     # Historical run tracking
-│   ├── lib/                # Utilities & Store
-│   │   ├── store.ts        # Zustand State Manager
-│   │   └── utils.ts        # Tailwind merging classes
-│   ├── types.ts            # Global Type Definitions
-│   ├── App.tsx             # React Router Configuration
-│   └── main.tsx            # React Mount Point
-```
+## 🏗️ Architecture & Tech Stack
 
-## 🧠 AI Pipeline (Hugging Face)
+- **Frontend:** React 19 (TypeScript) with Vite, Tailwind CSS, Recharts, and React Flow.
+- **Backend:** Node.js, Express (TypeScript), Socket.IO.
+- **Database & Auth:** Supabase (PostgreSQL + JWT Authentication).
+- **AI Intelligence:** Hugging Face Inference API (`@huggingface/inference`) via `Qwen2.5-7B-Instruct`.
+- **Core Engine:** Custom in-memory graph traversal and crowd density math engine.
 
-The application leverages the `@huggingface/inference` JavaScript SDK to dynamically connect to the Hugging Face Hub. 
-- **Selected Model**: `mistralai/Mistral-7B-Instruct-v0.2`
-- **Why**: Provides rapid inference capabilities, excels at structural reasoning, and easily processes mathematical context (node density, bottleneck queues) to output safe, human-readable evacuation/rerouting protocols.
-- **Workflow**: 
-  1. Backend computes mathematical density across the graph network (simulating Mesa/NetworkX).
-  2. Critical bottlenecks are identified based on capacity thresholds.
-  3. System dynamically constructs an inference prompt containing real-time venue state.
-  4. Hugging Face returns ranked, contextual recommendations.
+---
 
-## 📊 Database Schema (ER Diagram)
+## 📂 Project Structure & Component Guide
 
-*(Implemented logically via robust JSON state in this environment)*
+### 1. The Core Simulation Engine (`simulation-engine.ts`)
+**What it is:** The mathematical heart of the application running on the Node.js backend.
+**How it works:** It maintains an in-memory graph of the venue (Nodes and Edges). Every few milliseconds (a "tick"), it traverses the graph using pathfinding algorithms (like Dijkstra) to move simulated human agents from entrances to exits.
+**What it shows:** It doesn't show anything visually, but it emits a continuous stream of telemetry via Socket.IO containing: `riskScore`, `bottlenecks`, `activeAgents`, and `gateUtilization`. It autonomously triggers the Hugging Face AI when the `riskScore` exceeds safe thresholds.
 
-```mermaid
-erDiagram
-    USER {
-        string id PK
-        string email
-        string name
-        string password
-    }
-    VENUE {
-        string id PK
-        string name
-        json nodes
-        json edges
-    }
-    SIMULATION {
-        string id PK
-        string venueId FK
-        string timestamp
-        int crowdSize
-        float riskScore
-        json bottlenecks
-        string recommendations
-    }
-    USER ||--o{ VENUE : manages
-    VENUE ||--o{ SIMULATION : runs
-```
+### 2. Dashboard (`src/pages/Dashboard.tsx`)
+**What it is:** The command center for real-time system monitoring.
+**How it works:** Connects via authenticated Socket.IO to the backend simulation engine to receive live updates. It uses `Recharts` to map historical risk score trends.
+**What it shows:** 
+- **Live Risk Score:** A global percentage indicating the danger of crowd crush.
+- **Rerouted Agents:** How many people were successfully redirected by the AI.
+- **Crowd Density Timeline:** A live-updating area chart tracking risk over time.
+- **Gate Utilization:** Progress bars showing exactly how close each gate is to maximum capacity.
+- **System Status:** A grid showing the health of the Engine, Database, WebSocket, and Hugging Face API.
 
-## 🔌 API Documentation
+### 3. Venue Builder (`src/pages/VenueBuilder.tsx`)
+**What it is:** A drag-and-drop digital twin creator for stadium maps.
+**How it works:** Uses `reactflow` to let users plot Nodes (Gates, Concourses, Stairs) and connect them with Edges. Data is serialized into JSON and saved to the Supabase PostgreSQL database.
+**What it shows:** A canvas where users can visually map out their physical venues before running simulations on them.
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST   | `/api/auth/register` | Register new user | No |
-| POST   | `/api/auth/login` | Authenticate user | No |
-| GET    | `/api/venues` | List all venues | Yes |
-| POST   | `/api/venues` | Save a new venue | Yes |
-| POST   | `/api/simulate` | Trigger graph simulation & HF pipeline | Yes |
-| GET    | `/api/simulations` | Retrieve historical logs | Yes |
-| GET    | `/api/analytics` | Aggregate density metrics | Yes |
+### 4. Simulation View (`src/pages/Simulation.tsx`)
+**What it is:** The primary interface for running live emergency scenarios.
+**How it works:** The user selects a venue map and a crowd size. Clicking "Run Scenario" tells the backend to start pushing agents through the graph. The frontend uses `reactflow` to dynamically color the edges (Green -> Yellow -> Red) as they fill up with people.
+**What it shows:** 
+- **Live Graph Animation:** Watch traffic flow and bottlenecks form in real-time.
+- **AI Recommendation Summary:** When a bottleneck triggers, this box instantly populates with a plain-english strategy generated by Hugging Face (e.g., "Reroute 30% of traffic from Junction to Exit B").
+- **Technical Proof:** Shows the exact model used, the HTTP latency, and the confidence level of the AI.
 
-## 🛠 Installation & Deployment Guide
+### 5. Historical Reports (`src/pages/Reports.tsx`)
+**What it is:** The post-event analytics and compliance page.
+**How it works:** Fetches past simulations from the Supabase `simulations` table. It uses `jspdf` and `jspdf-autotable` to generate professional, downloadable PDF summaries.
+**What it shows:** A table of past events, their peak risk scores, and a button to instantly download a PDF report containing the AI's actions for compliance auditing.
 
-1. **Local Development**
-   ```bash
-   npm install
-   npm run dev
-   ```
-2. **Production Build**
-   ```bash
-   npm run build
-   ```
-3. **Start Production Server**
-   ```bash
-   npm run start
-   ```
+### 6. Authentication (`src/pages/Login.tsx`)
+**What it is:** Secure entry point to the application.
+**How it works:** Interfaces with Supabase Auth to provide secure JWT tokens which are then stored in Zustand state and attached to every API and WebSocket request.
+**What it shows:** A clean, modern login and sign-up form.
 
-**Docker Setup**
-Create a `Dockerfile` using the standard `node:20-alpine` base image, copying `package.json`, running `npm install`, then `npm run build`, and finally `CMD ["npm", "run", "start"]`. Expose port `3000`.
+### 7. Layout & Navigation (`src/components/Layout.tsx`)
+**What it is:** The master wrapper for the authenticated application.
+**How it works:** Uses `react-router-dom` to handle page transitions and `lucide-react` for iconography.
+**What it shows:** A collapsible sidebar navigation menu and the main content viewing area.
 
-## 🎨 Design System
-- **Theme**: Dark Apple Glassmorphism.
-- **Palette**: Deep charcoal canvases (`hsl(240 10% 3.9%)`), vibrant primary accents (`#3b82f6`), dynamic glow filters matching real-time risk scores (Green = Optimal, Red = Critical).
-- **Typography**: Clean, sans-serif metrics focusing on high-contrast numeric display.
+---
+
+## 🚀 How to Run Locally
+
+1. **Install Dependencies:** `npm install`
+2. **Environment Setup:** Ensure you have your `.env` file with `HF_TOKEN`, `SUPABASE_URL`, and `SUPABASE_KEY`.
+3. **Start the Platform:** `npm run dev`
+4. The frontend and backend will spin up concurrently. Access the app via `http://localhost:3001` (or your configured Vite port).

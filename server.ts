@@ -144,19 +144,20 @@ async function startServer() {
     // Check HF
     if (process.env.HF_TOKEN) {
        try {
-         const hfRes = await fetch("https://api-inference.huggingface.co/models/Qwen/Qwen2.5-7B-Instruct", {
-           headers: { Authorization: "Bearer " + process.env.HF_TOKEN }
+         await hf.chatCompletion({
+           model: "Qwen/Qwen2.5-7B-Instruct",
+           messages: [{ role: "user", content: "ping" }],
+           max_tokens: 1
          });
-         if (hfRes.ok || hfRes.status === 400 || hfRes.status === 503) {
-           if (hfRes.status === 503) status.huggingface = "🟡 Loading";
-           else status.huggingface = "🟢 Online";
-         } else if (hfRes.status === 429) {
+         status.huggingface = "🟢 Online";
+       } catch(e: any) {
+         if (e.message?.toLowerCase().includes("rate limit") || e.status === 429) {
            status.huggingface = "🔴 Rate Limited";
+         } else if (e.message?.toLowerCase().includes("loading") || e.status === 503) {
+           status.huggingface = "🟡 Loading";
          } else {
-           status.huggingface = "🔴 Error " + hfRes.status;
+           status.huggingface = "🔴 Offline";
          }
-       } catch(e) {
-         status.huggingface = "🔴 Offline";
        }
     }
 

@@ -60,7 +60,20 @@ export default function VenueBuilder() {
           const latest = data[data.length - 1];
           setVenueId(latest.id);
           setVenueName(latest.name);
-          setNodes(latest.nodes || []);
+          
+          // Re-inject styles if they were lost during DB serialization
+          const coloredNodes = (latest.nodes || []).map((node: Node) => {
+             const nt = NODE_TYPES.find(t => t.id === node.data?.type);
+             if (nt) {
+               return {
+                 ...node,
+                 style: { backgroundColor: nt.color, color: '#000', fontWeight: 'bold', padding: '10px', borderRadius: '5px', ...node.style }
+               };
+             }
+             return node;
+          });
+          
+          setNodes(coloredNodes);
           setEdges(latest.edges || []);
         } else {
           loadDemoVenue();
@@ -314,8 +327,7 @@ export default function VenueBuilder() {
                   target: edgeModal.connection.target,
                   data: newEdgeData,
                   markerEnd: { type: MarkerType.ArrowClosed },
-                  markerStart: direction === 'bidirectional' ? { type: MarkerType.ArrowClosed } : undefined,
-                  animated: true
+                  markerStart: direction === 'bidirectional' ? { type: MarkerType.ArrowClosed } : undefined
                 };
                 setEdges(es => [...es, newEdge]);
               } else {
